@@ -1,0 +1,79 @@
+<!-- Note: limits cause convergence problems in IKPY -->
+<?xml version="1.0"?>
+<robot name="robot">
+  <link name="link_3"></link>
+  <link name="base_link"></link>
+  <link name="link_1"></link>
+  <link name="link_8"></link>
+  <link name="link_2"></link>
+  <link name="link_6"></link>
+  <link name="link_7"></link>
+  <link name="link_5"></link>
+  <link name="link_4"></link>
+  <!--<link name="link_9"></link>-->
+  <joint name="crane_x7_shoulder_fixed_part_pan_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.040999999999999995" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 0.0 1.0" />
+      <!--<limit lower="-2.97132" upper="2.97132" velocity="4.81710873" effort="10.0" />-->
+      <parent link="base_link" />
+      <child link="link_1" />
+  </joint>
+  <joint name="crane_x7_shoulder_revolute_part_tilt_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.064" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 -1.0 0.0" />
+      <!--<limit lower="-1.570795" upper="1.570795" velocity="4.81710873" effort="10.0" />-->
+      <parent link="link_1" />
+      <child link="link_2" />
+  </joint>
+  <joint name="crane_x7_upper_arm_revolute_part_twist_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.065" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 0.0 1.0" />
+      <!--<limit lower="-1.570795" upper="1.570795" velocity="4.81710873" effort="4.0" />-->
+      <parent link="link_2" />
+      <child link="link_3" />
+  </joint>
+  <joint name="crane_x7_upper_arm_revolute_part_rotate_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.185" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 -1.0 0.0" />
+      <!--<limit lower="-2.80718" upper="0.04141" velocity="4.81710873" effort="4.0" />-->
+      <parent link="link_3" />
+      <child link="link_4" />
+  </joint>
+  <joint name="crane_x7_lower_arm_fixed_part_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.121" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 0.0 1.0" />
+      <!--<limit lower="-2.77343" upper="2.77343" velocity="4.81710873" effort="4.0" />-->
+      <parent link="link_4" />
+      <child link="link_5" />
+  </joint>
+  <joint name="crane_x7_lower_arm_revolute_part_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.129" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 -1.0 0.0" />
+      <!--<limit lower="-1.570795" upper="1.570795" velocity="4.81710873" effort="4.0" />-->
+      <parent link="link_5" />
+      <child link="link_6" />
+  </joint>
+  <joint name="crane_x7_wrist_joint" type="revolute">
+      <origin xyz="0.0 0.0 0.019" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 0.0 1.0" />
+      <!--<limit lower="-2.96365" upper="2.97132" velocity="4.81710873" effort="4.0" />-->
+      <parent link="link_6" />
+      <child link="link_7" />
+  </joint>
+  <joint name="crane_x7_gripper_finger_a_joint" type="revolute">
+      <origin xyz="-0.012 0.0 0.024" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 -1.0 0.0" />
+      <!--<limit lower="0.0046" upper="1.62601" velocity="4.81710873" effort="4.0" />-->
+      <parent link="link_7" />
+      <child link="link_8" />
+  </joint>
+  <!--
+  <joint name="crane_x7_gripper_finger_b_joint" type="revolute">
+      <origin xyz="0.012 0.0 0.024" rpy="0.0 -0.0 0.0" />
+      <axis xyz="0.0 1.0 0.0" />
+      <limit lower="0.0046" upper="1.62601" velocity="4.81710873" effort="4.0" />
+      <parent link="link_7" />
+      <child link="link_9" />
+  </joint>
+  -->
+</robot>
