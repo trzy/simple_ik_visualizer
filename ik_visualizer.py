@@ -10,7 +10,6 @@
 # - Auto-detect robot size and select an appropriate view point.
 # - Allow IK target to be moved in real-time.
 # - URDF support for arbitrary robots.
-# - Render joints as cylinders along axis of rotation.
 #
 
 from typing import Tuple
@@ -72,7 +71,7 @@ def camera():
     # look_at = camera_pos + np.array([0, 0, -1]) # look ahead
     # up = [ 0, 1, 0 ]
 
-    camera_pos = [ 0, 2, 0 ] # off to the side of robot, and above a bit
+    camera_pos = [ 0, 1, 0 ] # off to the side of robot, and above a bit
     look_at = [ 0, 0, 0 ]
     up = [ 0, 0, 1 ]            # z is up in robot frame
     gluLookAt(
@@ -94,8 +93,10 @@ def joint(position: np.ndarray, rpy: np.ndarray = [0,0,0], rotation_axis: np.nda
     joint.add_children(joint_rotation)
 
     gizmo = AxesGizmo(scale=0.04)
-    node = Sphere(radius=0.02, position=[0,0,0], color=orange)
-    gizmo.add_children(node)
+    rotate = FromToRotation(from_direction=[0,1,0], to_direction=rotation_axis) # rotate cylinder (default y is up) so that axis is angle of rotation
+    gizmo.add_children(rotate)
+    node = Cylinder(radius=0.02, height=0.06, position=[0,0,0], color=orange)
+    rotate.add_children(node)
     joint_rotation.add_children(gizmo)
 
     return joint, joint_rotation
