@@ -50,6 +50,7 @@ def lights():
 def init_opengl(resolution: Tuple[int, int]):
     pygame.init()
     pygame.display.set_mode(resolution, DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("IK Visualizer")
     glEnable(GL_DEPTH_TEST)
     glShadeModel(GL_SMOOTH)  # Enable smooth shading
     glClearColor(0.0, 0.0, 0.0, 1.0)  # Set background color to black
@@ -62,23 +63,40 @@ def init_viewport(resolution: Tuple[int, int]):
     glMatrixMode(GL_PROJECTION)
     gluPerspective(45, (resolution[0] / resolution[1]), 0.1, 50.0)
 
+
+camera_distance = 5.0
+camera_azimuth = 0.0
+camera_elevation = 0.0
+camera_target = [ 0, 0, 0 ]
+mouse_x, mouse_y = 0, 0
+
 def camera():
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glScalef(1, 1, 1)
 
-    # camera_pos = np.array([ 0, 0, 0 ])
-    # look_at = camera_pos + np.array([0, 0, -1]) # look ahead
-    # up = [ 0, 1, 0 ]
+    x = camera_distance * np.cos(camera_elevation) * np.sin(camera_azimuth)
+    y = camera_distance * np.sin(camera_elevation)
+    z = camera_distance * np.cos(camera_elevation) * np.cos(camera_azimuth)
 
-    camera_pos = [ 0, 1, 0 ] # off to the side of robot, and above a bit
-    look_at = [ 0, 0, 0 ]
-    up = [ 0, 0, 1 ]            # z is up in robot frame
+    camera_pos = [x + camera_target[0], y + camera_target[1], z + camera_target[2]]
+    look_at = camera_target
+    up = [0, 1, 0]
+
     gluLookAt(
         camera_pos[0], camera_pos[1], camera_pos[2],
         look_at[0], look_at[1], look_at[2],
         up[0], up[1], up[2]
     )
+
+    # camera_pos = [ 0, 1, 0 ] # off to the side of robot, and above a bit
+    # look_at = [ 0, 0, 0 ]
+    # up = [ 0, 0, 1 ]            # z is up in robot frame
+    # gluLookAt(
+    #     camera_pos[0], camera_pos[1], camera_pos[2],
+    #     look_at[0], look_at[1], look_at[2],
+    #     up[0], up[1], up[2]
+    # )
 
 def action(scene_graph: SceneGraphNode):
     # Draw the scene
@@ -159,6 +177,46 @@ def crane_x7(joint_angles: np.ndarray) -> SceneGraphNode:
 
     return root
 
+def handle_mouse_button(event: pygame.event.Event):
+    global mouse_x, mouse_y
+    if event.type == pygame.MOUSEBUTTONDOWN:
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+
+def handle_mouse_wheel(event: pygame.event.Event):
+    global camera_distance
+    if event.type == pygame.MOUSEWHEEL:
+        camera_distance = max(0.1, camera_distance - event.y * 0.1)
+
+def handle_mouse_motion(event: pygame.event.Event):
+    global mouse_x, mouse_y, camera_azimuth, camera_elevation, camera_target
+    if event.type == pygame.MOUSEMOTION:
+        dx, dy = event.pos[0] - mouse_x, event.pos[1] - mouse_y
+        mouse_x, mouse_y = event.pos
+
+        if event.buttons[2]:  # Right mouse button
+            camera_azimuth += dx * 0.01
+            camera_elevation += dy * 0.01
+            camera_elevation = max(min(camera_elevation, np.pi / 2), -np.pi / 2)
+        elif event.buttons[1]:  # Middle mouse button
+            forward = [
+                np.cos(camera_elevation) * np.sin(camera_azimuth),
+                np.sin(camera_elevation),
+                np.cos(camera_elevation) * np.cos(camera_azimuth)
+            ]
+            right = [
+                np.cos(camera_azimuth),
+                0,
+                -np.sin(camera_azimuth)
+            ]
+            up = [
+                np.sin(camera_elevation) * np.sin(camera_azimuth),
+                np.cos(camera_elevation),
+                np.sin(camera_elevation) * np.cos(camera_azimuth)
+            ]
+
+            for i in range(3):
+                camera_target[i] += (-dx * right[i] - dy * up[i]) * 0.01
+
 def main():
     resolution = (800, 600)
     init_opengl(resolution=resolution)
@@ -173,6 +231,9 @@ def main():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 return
+            handle_mouse_button(event=event)
+            handle_mouse_wheel(event=event)
+            handle_mouse_motion(event=event)
         camera()
         action(scene_graph=scene_graph)
         pygame.display.flip()
