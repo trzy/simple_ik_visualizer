@@ -5,12 +5,12 @@
 # Scene graph classes for rendering. The scene graph is an n-way tree.
 #
 
-from abc import abstractmethod
 import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
 from .primitives import draw_box, draw_cylinder, draw_sphere, draw_axes_gizmo
+
 
 def x_rotation(degrees: float) -> np.ndarray:
     """The 3x3 rotation matrix for a rotation of `theta` radians about the x-axis."""
@@ -21,7 +21,6 @@ def x_rotation(degrees: float) -> np.ndarray:
         [0, np.sin(theta), np.cos(theta)]
     ])
 
-
 def y_rotation(degrees: float) -> np.ndarray:
     """The 3x3 rotation matrix for a rotation of `theta` radians about the y-axis."""
     theta = np.deg2rad(degrees)
@@ -30,7 +29,6 @@ def y_rotation(degrees: float) -> np.ndarray:
         [0, 1, 0],
         [-np.sin(theta), 0, np.cos(theta)]
     ])
-
 
 def z_rotation(degrees: float) -> np.ndarray:
     """The 3x3 rotation matrix for a rotation of `theta` radians about the z-axis."""
@@ -137,8 +135,6 @@ class FromToRotation(Rotation):
         radians = np.acos(np.dot(dir_from, dir_to))
 
         super().__init__(axis=axis, degrees=np.rad2deg(radians))
-
-
 
 class Sphere(SceneGraphNode):
     def __init__(self, radius: float, position: np.ndarray, euler_degrees: np.ndarray = np.array([ 0, 0, 0 ]), color: np.ndarray = np.array([ 1, 1, 1 ])):
