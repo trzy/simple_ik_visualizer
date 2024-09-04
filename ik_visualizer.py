@@ -12,6 +12,7 @@
 # - URDF support for arbitrary robots.
 #
 
+import timeit
 from typing import Tuple
 
 from ikpy.chain import Chain
@@ -209,17 +210,20 @@ def main():
     joint_mask[0] = False   # first is not a real joint (it is a link)
     joint_mask[-1] = False  # last not a real joint
     kinematic_chain = Chain.from_urdf_file(urdf_file="crane_x7_simple.urdf", active_links_mask=joint_mask)
-    target = [ 0.1, 0.2, .50 ]
-    joint_angles = kinematic_chain.inverse_kinematics(target_position=target)
-    joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
-    scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=target)
 
+    # Init graphics
     resolution = (800, 600)
     init_opengl(resolution=resolution)
     init_viewport(resolution=resolution)
 
+    # Render loop
+    target_frame_rate = 60
+    target_frame_time = 1.0 / target_frame_rate
     lights()
     while True:
+        frame_start = timeit.default_timer()
+
+        # Process inputs
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -227,10 +231,26 @@ def main():
             handle_mouse_button(event=event)
             handle_mouse_wheel(event=event)
             handle_mouse_motion(event=event)
+
+        # Perform IK
+        target = [ 0.1, 0.2, .50 ]
+        joint_angles = kinematic_chain.inverse_kinematics(target_position=target)
+        joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
+
+        # Produce scene graph by running forward kinematics
+        scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=target)
+
+        # Draw
         camera()
         action(scene_graph=scene_graph)
+
+        # Display and wait until next frame
         pygame.display.flip()
-        pygame.time.wait(int(1000 * 1.0 / 60.0))
+        frame_end = timeit.default_timer()
+        frame_time_elapsed = frame_end - frame_start
+        frame_time_remaining = target_frame_time - frame_time_elapsed
+        if frame_time_remaining > 0:
+            pygame.time.wait(int(frame_time_remaining * 1000))
 
 if __name__ == "__main__":
     main()
