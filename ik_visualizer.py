@@ -217,6 +217,7 @@ def main():
     joint_mask[0] = False   # first is not a real joint (it is a link)
     joint_mask[-1] = False  # last not a real joint
     kinematic_chain = Chain.from_urdf_file(urdf_file="crane_x7_simple.urdf", active_links_mask=joint_mask)
+    joint_angles = [ 0 ] * 9
 
     # Init graphics
     resolution = (800, 600)
@@ -240,7 +241,7 @@ def main():
             handle_mouse_motion(event=event)
 
         # Perform IK
-        joint_angles = kinematic_chain.inverse_kinematics(target_position=ik_target_position)
+        joint_angles = kinematic_chain.inverse_kinematics(target_position=ik_target_position, initial_position=joint_angles) #, target_orientation=[1,0,0], orientation_mode="X")
         joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
 
         # Produce scene graph by running forward kinematics
