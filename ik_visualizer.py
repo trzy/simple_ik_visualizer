@@ -66,10 +66,11 @@ def init_viewport(resolution: Tuple[int, int]):
     glMatrixMode(GL_PROJECTION)
     gluPerspective(45, (resolution[0] / resolution[1]), 0.1, 50.0)
 
-camera_distance = 5.0
+camera_distance = 1.5
 camera_target = [ 0, 0, 0 ] # in global coordinate system
 mouse_x, mouse_y = 0, 0
 camera_rotation_matrix = np.eye(4)
+camera_rotation_matrix[0:3, 0:3] = euler_rotation_matrix(euler_degrees=[-90,180,0])
 
 def camera():
     glMatrixMode(GL_MODELVIEW)
