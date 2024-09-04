@@ -1,5 +1,5 @@
-<!-- Note: limits cause convergence problems in IKPY -->
 <?xml version="1.0"?>
+<!-- Note: limits cause convergence problems in IKPY -->
 <robot name="robot">
   <link name="link_3"></link>
   <link name="base_link"></link>
