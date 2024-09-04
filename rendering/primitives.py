@@ -118,7 +118,7 @@ def draw_axes_gizmo(length=1.0, arrow_head_length=0.2, arrow_head_radius=0.05):
     def draw_arrow(direction):
         glPushMatrix()
         if direction[0] != 0:
-            glRotatef(90, 0, 1, 0) if direction[0] < 0 else glRotatef(-90, 0, 1, 0)
+            glRotatef(90, 0, 1, 0) if direction[0] > 0 else glRotatef(-90, 0, 1, 0)
         elif direction[1] != 0:
             glRotatef(-90, 1, 0, 0) if direction[1] > 0 else glRotatef(90, 1, 0, 0)
         elif direction[2] < 0:
