@@ -8,16 +8,19 @@ import numpy as np
 # appears to be a dummy whose value has no effect. Each joint in our chain is a revolute joint,
 # which takes an angle in radians, or a fixed joint, which cannot be changed.
 joint_angles = [ 0.0 ] * 9
+joint_mask = [ True ] * 9
+joint_mask[0] = False   # first link is not a joint
+joint_mask[-1] = False  # last isn't either
 
 # The target position for the last link in our chain
 target = [0, 0.2, .50 ]
 
 # Load our robot
-my_chain = Chain.from_urdf_file("crane_x7_simple.urdf")
+my_chain = Chain.from_urdf_file("crane_x7_simple.urdf", active_links_mask=joint_mask)
 
 # Forward kinematics computes a transform matrix for the final link
-m = my_chain.forward_kinematics(joints=joint_angles)
-print(m)
+#m = my_chain.forward_kinematics(joints=joint_angles)
+#print(m)
 
 # Inverse kinematics returns a list of joint angles
 joint_angles = my_chain.inverse_kinematics(target_position=target)

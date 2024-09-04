@@ -14,6 +14,7 @@
 
 from typing import Tuple
 
+from ikpy.chain import Chain
 import numpy as np
 import pygame
 from pygame.locals import DOUBLEBUF, OPENGL
@@ -111,12 +112,23 @@ def joint(position: np.ndarray, rpy: np.ndarray = [0,0,0], rotation_axis: np.nda
 
     return joint, joint_rotation
 
-def crane_x7(joint_angles: np.ndarray) -> SceneGraphNode:
+def crane_x7(joint_angles: np.ndarray, ik_target_position: np.ndarray) -> SceneGraphNode:
     root = SceneGraphNode(position=[0,0,0], euler_degrees=[0,0,0])
 
     # Big gizmo for world
     world_gizmo = AxesGizmo(scale=0.2)
     root.add_children(world_gizmo)
+
+    # IK target
+    target = Sphere(radius=0.02, position=ik_target_position, color=[1,0,1])
+    root.add_children(target)
+
+    # Ensure axes are correct
+    # cubex = Box(width=0.1, height=0.1, depth=0.1, position=[0.3,0,0], color=[1,0,0])
+    # cubey = Box(width=0.1, height=0.1, depth=0.1, position=[0,0.3,0], color=[0,1,0])
+    # cubez = Box(width=0.1, height=0.1, depth=0.1, position=[0,0,0.3], color=[0,0,1])
+    # root.add_children(cubex, cubey, cubez)
+    # return root
 
     # Create all joints and link them together.
     # joint1_root is the root node of the joint sub-graph, which will apply the joint translation
@@ -191,12 +203,20 @@ def handle_mouse_motion(event: pygame.event.Event):
             camera_target[0] += -dx * 0.001
 
 def main():
+    # Load Crane X7 (must be consistent with hard-coded definition)
+    #TODO: construct scene graph directly from URDF file
+    joint_mask = [ True ] * 9
+    joint_mask[0] = False   # first is not a real joint (it is a link)
+    joint_mask[-1] = False  # last not a real joint
+    kinematic_chain = Chain.from_urdf_file(urdf_file="crane_x7_simple.urdf", active_links_mask=joint_mask)
+    target = [ 0.1, 0.2, .50 ]
+    joint_angles = kinematic_chain.inverse_kinematics(target_position=target)
+    joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
+    scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=target)
+
     resolution = (800, 600)
     init_opengl(resolution=resolution)
     init_viewport(resolution=resolution)
-
-    joint_angles=[np.float64(3.1664190366910066e-14), np.float64(-42.62156391594923), np.float64(6.613471424999982), np.float64(-51.56352162191282), np.float64(38.91598287604014), np.float64(-26.996998632826443), np.float64(101.9329623596963), np.float64(-20.26359190544769), np.float64(0.0)]
-    scene_graph = crane_x7(joint_angles=joint_angles)
 
     lights()
     while True:
