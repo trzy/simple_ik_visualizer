@@ -203,8 +203,9 @@ def handle_mouse_motion(event: pygame.event.Event):
             camera_target[1] += dy * 0.001
             camera_target[0] += -dx * 0.001
         elif event.buttons[0]:  # left mouse button
-            camera_right = np.linalg.inv(camera_rotation_matrix)[0:3,0]
-            camera_up = np.linalg.inv(camera_rotation_matrix)[0:3,1]
+            inverse_camera_rotation_matrix = np.linalg.inv(camera_rotation_matrix)
+            camera_right = inverse_camera_rotation_matrix[0:3,0]
+            camera_up = inverse_camera_rotation_matrix[0:3,1]
             ik_target_position += 0.001 * dx * camera_right - 0.001 * dy * camera_up
 
 ik_target_position = np.array([ 0.1, 0.2, .50 ])
