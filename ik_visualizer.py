@@ -21,6 +21,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 
 from rendering import *
+from rendering.scene_graph import euler_rotation_matrix #TODO: move this into a math module
 
 
 def lights():
@@ -63,40 +64,31 @@ def init_viewport(resolution: Tuple[int, int]):
     glMatrixMode(GL_PROJECTION)
     gluPerspective(45, (resolution[0] / resolution[1]), 0.1, 50.0)
 
-
 camera_distance = 5.0
-camera_azimuth = 0.0
-camera_elevation = 0.0
-camera_target = [ 0, 0, 0 ]
+camera_target = [ 0, 0, 0 ] # in global coordinate system
 mouse_x, mouse_y = 0, 0
+camera_rotation_matrix = np.eye(4)
 
 def camera():
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glScalef(1, 1, 1)
 
-    x = camera_distance * np.cos(camera_elevation) * np.sin(camera_azimuth)
-    y = camera_distance * np.sin(camera_elevation)
-    z = camera_distance * np.cos(camera_elevation) * np.cos(camera_azimuth)
-
-    camera_pos = [x + camera_target[0], y + camera_target[1], z + camera_target[2]]
-    look_at = camera_target
-    up = [0, 1, 0]
-
     gluLookAt(
-        camera_pos[0], camera_pos[1], camera_pos[2],
-        look_at[0], look_at[1], look_at[2],
-        up[0], up[1], up[2]
+        0, 0, camera_distance,
+        camera_target[0], camera_target[1], camera_target[2],
+        0, 1, 0
     )
 
-    # camera_pos = [ 0, 1, 0 ] # off to the side of robot, and above a bit
-    # look_at = [ 0, 0, 0 ]
-    # up = [ 0, 0, 1 ]            # z is up in robot frame
-    # gluLookAt(
-    #     camera_pos[0], camera_pos[1], camera_pos[2],
-    #     look_at[0], look_at[1], look_at[2],
-    #     up[0], up[1], up[2]
-    # )
+    # Orbit around the scene by rotation the scene itself
+    glMultMatrixf(camera_rotation_matrix.T)
+
+def rotate_camera_matrix(elevation_degrees: float, azimuth_degrees: float):
+    global camera_rotation_matrix
+    degrees = np.array([ elevation_degrees, azimuth_degrees, 0 ])
+    rotation_matrix = np.eye(4)
+    rotation_matrix[0:3, 0:3] = euler_rotation_matrix(euler_degrees=degrees)
+    camera_rotation_matrix = rotation_matrix @ camera_rotation_matrix
 
 def action(scene_graph: SceneGraphNode):
     # Draw the scene
@@ -192,30 +184,11 @@ def handle_mouse_motion(event: pygame.event.Event):
     if event.type == pygame.MOUSEMOTION:
         dx, dy = event.pos[0] - mouse_x, event.pos[1] - mouse_y
         mouse_x, mouse_y = event.pos
-
         if event.buttons[2]:  # Right mouse button
-            camera_azimuth += dx * 0.01
-            camera_elevation += dy * 0.01
-            camera_elevation = max(min(camera_elevation, np.pi / 2), -np.pi / 2)
+            rotate_camera_matrix(elevation_degrees=dy * 0.1, azimuth_degrees=dx * 0.1)
         elif event.buttons[1]:  # Middle mouse button
-            forward = [
-                np.cos(camera_elevation) * np.sin(camera_azimuth),
-                np.sin(camera_elevation),
-                np.cos(camera_elevation) * np.cos(camera_azimuth)
-            ]
-            right = [
-                np.cos(camera_azimuth),
-                0,
-                -np.sin(camera_azimuth)
-            ]
-            up = [
-                np.sin(camera_elevation) * np.sin(camera_azimuth),
-                np.cos(camera_elevation),
-                np.sin(camera_elevation) * np.cos(camera_azimuth)
-            ]
-
-            for i in range(3):
-                camera_target[i] += (-dx * right[i] - dy * up[i]) * 0.01
+            camera_target[1] += dy * 0.001
+            camera_target[0] += -dx * 0.001
 
 def main():
     resolution = (800, 600)
