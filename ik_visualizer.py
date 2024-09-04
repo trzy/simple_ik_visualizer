@@ -6,9 +6,7 @@
 #
 # TODO:
 # -----
-# - Orbit, zoom, pan functionality.
 # - Auto-detect robot size and select an appropriate view point.
-# - Allow IK target to be moved in real-time.
 # - URDF support for arbitrary robots.
 #
 
