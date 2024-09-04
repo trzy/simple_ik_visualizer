@@ -193,15 +193,21 @@ def handle_mouse_wheel(event: pygame.event.Event):
         camera_distance = max(0.1, camera_distance - event.y * 0.1)
 
 def handle_mouse_motion(event: pygame.event.Event):
-    global mouse_x, mouse_y, camera_azimuth, camera_elevation, camera_target
+    global mouse_x, mouse_y, camera_azimuth, camera_elevation, camera_target, ik_target_position
     if event.type == pygame.MOUSEMOTION:
         dx, dy = event.pos[0] - mouse_x, event.pos[1] - mouse_y
         mouse_x, mouse_y = event.pos
-        if event.buttons[2]:  # Right mouse button
+        if event.buttons[2]:    # right mouse button
             rotate_camera_matrix(elevation_degrees=dy * 0.1, azimuth_degrees=dx * 0.1)
-        elif event.buttons[1]:  # Middle mouse button
+        elif event.buttons[1]:  # middle mouse button
             camera_target[1] += dy * 0.001
             camera_target[0] += -dx * 0.001
+        elif event.buttons[0]:  # left mouse button
+            camera_right = np.linalg.inv(camera_rotation_matrix)[0:3,0]
+            camera_up = np.linalg.inv(camera_rotation_matrix)[0:3,1]
+            ik_target_position += 0.001 * dx * camera_right - 0.001 * dy * camera_up
+
+ik_target_position = np.array([ 0.1, 0.2, .50 ])
 
 def main():
     # Load Crane X7 (must be consistent with hard-coded definition)
@@ -233,12 +239,11 @@ def main():
             handle_mouse_motion(event=event)
 
         # Perform IK
-        target = [ 0.1, 0.2, .50 ]
-        joint_angles = kinematic_chain.inverse_kinematics(target_position=target)
+        joint_angles = kinematic_chain.inverse_kinematics(target_position=ik_target_position)
         joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
 
         # Produce scene graph by running forward kinematics
-        scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=target)
+        scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=ik_target_position)
 
         # Draw
         camera()
