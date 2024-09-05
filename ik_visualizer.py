@@ -210,6 +210,7 @@ def crane_x7(joint_angles: np.ndarray, ik_target_position: np.ndarray) -> SceneG
 
     return root
 
+
 ####################################################################################################
 # Main Loop
 ####################################################################################################
@@ -261,14 +262,14 @@ def main():
     target_frame_time = 1.0 / target_frame_rate
     current_ik_target_position_idx = 0
     lights()
-    while True:
+    quit = False
+    while not quit:
         frame_start = timeit.default_timer()
 
         # Process inputs
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                quit = True
             handle_mouse_button(event=event)
             handle_mouse_wheel(event=event)
             handle_mouse_motion(event=event)
@@ -295,6 +296,13 @@ def main():
         frame_time_remaining = target_frame_time - frame_time_elapsed
         if frame_time_remaining > 0:
             pygame.time.wait(int(frame_time_remaining * 1000))
+
+    # Print current joint angles and exit
+    print("Joint Angles")
+    print("------------")
+    for i in range(len(joint_degrees)):
+        print(f"  {i} = {joint_degrees[i]:.2f} deg")
+    pygame.quit()
 
 def parse_point_list(text: str, parser: argparse.ArgumentParser) -> List[np.ndarray]:
     points: List[np.ndarray] = []
