@@ -9,6 +9,7 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
+
 def draw_sphere(radius: float, longitudinal_slices: int = 32, latitudinal_slices: int = 32):
     quadric = gluNewQuadric()
     gluQuadricNormals(quadric, GLU_SMOOTH)  # Enable smooth shading

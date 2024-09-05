@@ -21,8 +21,34 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 
 from rendering import *
-from rendering.scene_graph import euler_rotation_matrix #TODO: move this into a math module
+from math_helpers import euler_rotation_matrix4
 
+
+####################################################################################################
+# Graphics
+####################################################################################################
+
+camera_position = [ 0, 0, -1.5 ]    # in world coordinate system
+camera_target = [ 0, 0, 0 ]         # in world coordinate system
+mouse_x, mouse_y = 0, 0
+camera_rotation_matrix= euler_rotation_matrix4(euler_degrees=[-90,180,0])
+
+def init_graphics(resolution: Tuple[int, int]):
+    # OpenGL
+    pygame.init()
+    pygame.display.set_mode(resolution, DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("IK Visualizer")
+    glEnable(GL_DEPTH_TEST)
+    glShadeModel(GL_SMOOTH)  # Enable smooth shading
+    glClearColor(0.0, 0.0, 0.0, 1.0)  # Set background color to black
+    glClearDepth(1.0)  # Set clear depth
+    glDepthFunc(GL_LEQUAL)  # Set depth function
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)  # Nice perspective corrections
+    glFrontFace(GL_CW)
+
+    # Viewport
+    glMatrixMode(GL_PROJECTION)
+    gluPerspective(45, (resolution[0] / resolution[1]), 0.1, 50.0)
 
 def lights():
     glEnable(GL_NORMALIZE)
@@ -48,53 +74,37 @@ def lights():
     glMaterialfv(GL_FRONT, GL_SPECULAR, specular_light)
     glMateriali(GL_FRONT, GL_SHININESS, 25)
 
-def init_opengl(resolution: Tuple[int, int]):
-    pygame.init()
-    pygame.display.set_mode(resolution, DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("IK Visualizer")
-    glEnable(GL_DEPTH_TEST)
-    glShadeModel(GL_SMOOTH)  # Enable smooth shading
-    glClearColor(0.0, 0.0, 0.0, 1.0)  # Set background color to black
-    glClearDepth(1.0)  # Set clear depth
-    glDepthFunc(GL_LEQUAL)  # Set depth function
-    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST)  # Nice perspective corrections
-    glFrontFace(GL_CW)
-
-def init_viewport(resolution: Tuple[int, int]):
-    glMatrixMode(GL_PROJECTION)
-    gluPerspective(45, (resolution[0] / resolution[1]), 0.1, 50.0)
-
-camera_distance = 1.5
-camera_target = [ 0, 0, 0 ] # in global coordinate system
-mouse_x, mouse_y = 0, 0
-camera_rotation_matrix = np.eye(4)
-camera_rotation_matrix[0:3, 0:3] = euler_rotation_matrix(euler_degrees=[-90,180,0])
-
 def camera():
     glMatrixMode(GL_MODELVIEW)
     glLoadIdentity()
     glScalef(1, 1, 1)
 
     gluLookAt(
-        0, 0, camera_distance,
+        camera_position[0], camera_position[1], camera_position[2],
         camera_target[0], camera_target[1], camera_target[2],
-        0, 1, 0
+        0, 1, 0 # up vector
     )
 
     # Orbit around the scene by rotation the scene itself
     glMultMatrixf(camera_rotation_matrix.T)
 
-def rotate_camera_matrix(elevation_degrees: float, azimuth_degrees: float):
+def rotate_camera(elevation_degrees: float, azimuth_degrees: float):
     global camera_rotation_matrix
     degrees = np.array([ elevation_degrees, azimuth_degrees, 0 ])
-    rotation_matrix = np.eye(4)
-    rotation_matrix[0:3, 0:3] = euler_rotation_matrix(euler_degrees=degrees)
-    camera_rotation_matrix = rotation_matrix @ camera_rotation_matrix
+    delta_rotation_matrix = euler_rotation_matrix4(euler_degrees=degrees)
+    camera_rotation_matrix = delta_rotation_matrix @ camera_rotation_matrix
 
-def action(scene_graph: SceneGraphNode):
+def draw_scene(scene_graph: SceneGraphNode):
     # Draw the scene
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     scene_graph.render()
+
+
+####################################################################################################
+# CRANE-X7 Rendering
+#
+# Produces a scene graph of the CRANE-X7 arm with given joint rotations.
+####################################################################################################
 
 def joint(position: np.ndarray, rpy: np.ndarray = [0,0,0], rotation_axis: np.ndarray = [0,0,1], rotation_degrees: float = 0) -> Tuple[SceneGraphNode, SceneGraphNode]:
     orange = [1,0.5,0]
@@ -181,23 +191,27 @@ def crane_x7(joint_angles: np.ndarray, ik_target_position: np.ndarray) -> SceneG
 
     return root
 
+####################################################################################################
+# Main Loop
+####################################################################################################
+
 def handle_mouse_button(event: pygame.event.Event):
     global mouse_x, mouse_y
     if event.type == pygame.MOUSEBUTTONDOWN:
         mouse_x, mouse_y = pygame.mouse.get_pos()
 
 def handle_mouse_wheel(event: pygame.event.Event):
-    global camera_distance
+    global camera_position
     if event.type == pygame.MOUSEWHEEL:
-        camera_distance = max(0.1, camera_distance - event.y * 0.1)
+        camera_position[2] = max(0.1, camera_position[2] - event.y * 0.1)
 
 def handle_mouse_motion(event: pygame.event.Event):
-    global mouse_x, mouse_y, camera_azimuth, camera_elevation, camera_target, ik_target_position
+    global mouse_x, mouse_y, camera_target, ik_target_position
     if event.type == pygame.MOUSEMOTION:
         dx, dy = event.pos[0] - mouse_x, event.pos[1] - mouse_y
         mouse_x, mouse_y = event.pos
         if event.buttons[2]:    # right mouse button
-            rotate_camera_matrix(elevation_degrees=dy * 0.1, azimuth_degrees=dx * 0.1)
+            rotate_camera(elevation_degrees=dy * 0.1, azimuth_degrees=dx * 0.1)
         elif event.buttons[1]:  # middle mouse button
             camera_target[1] += dy * 0.001
             camera_target[0] += -dx * 0.001
@@ -219,9 +233,7 @@ def main():
     joint_angles = [ 0 ] * 9
 
     # Init graphics
-    resolution = (800, 600)
-    init_opengl(resolution=resolution)
-    init_viewport(resolution=resolution)
+    init_graphics(resolution=(800,600))
 
     # Render loop
     target_frame_rate = 60
@@ -248,7 +260,7 @@ def main():
 
         # Draw
         camera()
-        action(scene_graph=scene_graph)
+        draw_scene(scene_graph=scene_graph)
 
         # Display and wait until next frame
         pygame.display.flip()

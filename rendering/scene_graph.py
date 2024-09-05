@@ -9,42 +9,9 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GLU import *
 
+from math_helpers import euler_rotation_matrix3
 from .primitives import draw_box, draw_cylinder, draw_sphere, draw_axes_gizmo
 
-
-def x_rotation(degrees: float) -> np.ndarray:
-    """The 3x3 rotation matrix for a rotation of `theta` radians about the x-axis."""
-    theta = np.deg2rad(degrees)
-    return np.array([
-        [1, 0, 0],
-        [0, np.cos(theta), -np.sin(theta)],
-        [0, np.sin(theta), np.cos(theta)]
-    ])
-
-def y_rotation(degrees: float) -> np.ndarray:
-    """The 3x3 rotation matrix for a rotation of `theta` radians about the y-axis."""
-    theta = np.deg2rad(degrees)
-    return np.array([
-        [np.cos(theta), 0, np.sin(theta)],
-        [0, 1, 0],
-        [-np.sin(theta), 0, np.cos(theta)]
-    ])
-
-def z_rotation(degrees: float) -> np.ndarray:
-    """The 3x3 rotation matrix for a rotation of `theta` radians about the z-axis."""
-    theta = np.deg2rad(degrees)
-    return np.array([
-        [np.cos(theta), -np.sin(theta), 0],
-        [np.sin(theta), np.cos(theta), 0],
-        [0, 0, 1]
-    ])
-
-def euler_rotation_matrix(euler_degrees: np.ndarray) -> np.ndarray:
-    """The 3x3 rotation matrix in order of roll (about x, as in URDF convention), pitch (y), yaw (z, which is up in robot coordinate system) """
-    x_rot = x_rotation(euler_degrees[0])
-    y_rot = y_rotation(euler_degrees[1])
-    z_rot = z_rotation(euler_degrees[2])
-    return np.matmul(z_rot, np.matmul(y_rot, x_rot))
 
 class SceneGraphNode:
     def __init__(self, position: np.ndarray = [ 0, 0, 0 ], euler_degrees: np.ndarray = [ 0, 0, 0 ], **kwargs):
@@ -55,7 +22,7 @@ class SceneGraphNode:
             self._matrix = kwargs["matrix"]
         else:
             # Compute matrix from position and Euler angles
-            self._matrix[0:3, 0:3] = euler_rotation_matrix(euler_degrees=euler_degrees)
+            self._matrix[0:3, 0:3] = euler_rotation_matrix3(euler_degrees=euler_degrees)
             self._matrix[0:3, 3] = position
 
     @property
