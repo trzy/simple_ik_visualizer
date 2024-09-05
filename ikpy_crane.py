@@ -1,4 +1,10 @@
-import ikpy
+#
+# ikpy_crane.py
+# Bart Trzynadlowski, 2024
+#
+# Example of using IKPY for inverse kinematics with the CRANE-X7.
+#
+
 from ikpy.chain import Chain
 import ikpy.utils.plot as plot_utils
 import matplotlib.pyplot as plt
