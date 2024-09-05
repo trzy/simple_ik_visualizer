@@ -4,14 +4,28 @@
 #
 # Renders CRANE-X7 joints obtained from IK solutions.
 #
+# Usage Instructions
+# ------------------
+# Run the visualizer with one or more target points:
+#
+#   python ik_visualizer.py --target=(0.2,0.2,0.5),(-0.2,0.2,0.5),(-0.2,0.2,0),(0.2,0.2,0)
+#
+# If more than one point is specified, the target position smoothly follows the trajectory defined
+# by the points, in order, continuously. If only a single point is defined, the target position may
+# be modified in real-time by holding the left mouse button down and moving the mouse.
+#
+# Right click and drag to orbit. Middle click and drag to translate. Use the scroll wheel to zoom in
+# and out.
+#
 # TODO:
 # -----
 # - Auto-detect robot size and select an appropriate view point.
 # - URDF support for arbitrary robots.
 #
 
+import argparse
 import timeit
-from typing import Tuple
+from typing import Tuple, List
 
 from ikpy.chain import Chain
 import numpy as np
@@ -28,8 +42,8 @@ from math_helpers import euler_rotation_matrix4
 # Graphics
 ####################################################################################################
 
-camera_position = [ 0, 0, -1.5 ]    # in world coordinate system
-camera_target = [ 0, 0, 0 ]         # in world coordinate system
+camera_position = [ 0, 0, 1.5 ] # in world coordinate system
+camera_target = [ 0, 0, 0 ]     # in world coordinate system
 mouse_x, mouse_y = 0, 0
 camera_rotation_matrix= euler_rotation_matrix4(euler_degrees=[-90,180,0])
 
@@ -89,6 +103,11 @@ def camera():
     glMultMatrixf(camera_rotation_matrix.T)
 
 def rotate_camera(elevation_degrees: float, azimuth_degrees: float):
+    # And this is why we use a separate rotation matrix -- it's easier to stack the rotations this
+    # way but this can't be folded into a single unified camera matrix directly because we have:
+    # C = C' * Rn * ... * R2 * R1, where C is the effective camera matrix and C' is the camera
+    # matrix computed by gluLookAt(). Note that we are sandwiching incremental rotations in between
+    # the previous rotation and the glu camera matrix, requiring that we keep them decoupled.
     global camera_rotation_matrix
     degrees = np.array([ elevation_degrees, azimuth_degrees, 0 ])
     delta_rotation_matrix = euler_rotation_matrix4(euler_degrees=degrees)
@@ -195,6 +214,8 @@ def crane_x7(joint_angles: np.ndarray, ik_target_position: np.ndarray) -> SceneG
 # Main Loop
 ####################################################################################################
 
+ik_target_positions: List[np.ndarray] = []
+
 def handle_mouse_button(event: pygame.event.Event):
     global mouse_x, mouse_y
     if event.type == pygame.MOUSEBUTTONDOWN:
@@ -216,12 +237,12 @@ def handle_mouse_motion(event: pygame.event.Event):
             camera_target[1] += dy * 0.001
             camera_target[0] += -dx * 0.001
         elif event.buttons[0]:  # left mouse button
-            inverse_camera_rotation_matrix = np.linalg.inv(camera_rotation_matrix)
-            camera_right = inverse_camera_rotation_matrix[0:3,0]
-            camera_up = inverse_camera_rotation_matrix[0:3,1]
-            ik_target_position += 0.001 * dx * camera_right - 0.001 * dy * camera_up
-
-ik_target_position = np.array([ 0.1, 0.2, .50 ])
+            # Move IK target if there is only a single one
+            if len(ik_target_positions) == 1:
+                inverse_camera_rotation_matrix = np.linalg.inv(camera_rotation_matrix)
+                camera_right = inverse_camera_rotation_matrix[0:3,0]
+                camera_up = inverse_camera_rotation_matrix[0:3,1]
+                ik_target_positions[0] += 0.001 * dx * camera_right - 0.001 * dy * camera_up
 
 def main():
     # Load Crane X7 (must be consistent with hard-coded definition)
@@ -238,6 +259,7 @@ def main():
     # Render loop
     target_frame_rate = 60
     target_frame_time = 1.0 / target_frame_rate
+    current_ik_target_position_idx = 0
     lights()
     while True:
         frame_start = timeit.default_timer()
@@ -251,12 +273,16 @@ def main():
             handle_mouse_wheel(event=event)
             handle_mouse_motion(event=event)
 
+        # Get next point in trajectory
+        target_position = ik_target_positions[current_ik_target_position_idx]
+        current_ik_target_position_idx = (current_ik_target_position_idx + 1) % len(ik_target_positions)
+
         # Perform IK
-        joint_angles = kinematic_chain.inverse_kinematics(target_position=ik_target_position, initial_position=joint_angles) #, target_orientation=[1,0,0], orientation_mode="X")
+        joint_angles = kinematic_chain.inverse_kinematics(target_position=target_position, initial_position=joint_angles) #, target_orientation=[1,0,0], orientation_mode="X")
         joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
 
         # Produce scene graph by running forward kinematics
-        scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=ik_target_position)
+        scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=target_position)
 
         # Draw
         camera()
@@ -270,5 +296,62 @@ def main():
         if frame_time_remaining > 0:
             pygame.time.wait(int(frame_time_remaining * 1000))
 
+def parse_point_list(text: str, parser: argparse.ArgumentParser) -> List[np.ndarray]:
+    points: List[np.ndarray] = []
+
+    #
+    # Can have any of:
+    #
+    #   x,y,z
+    #   (x,y,z)
+    #   (x,y,z),(x2,y2,z2)
+    #
+    # We do the following:
+    #
+    #   - Remove whitespace.
+    #   - Attempt to split on "),".
+    #       - Remove parentheses in each resulting element.
+    #       - Parse each as a numpy array string.
+    #
+
+    text = "".join(text.split())    # remove all whitespace
+    arrays = text.split("),")
+    for array in arrays:
+        array = array.lstrip("(").rstrip(")")
+        try:
+            point = np.fromstring(array, dtype=float, sep=",")
+            if point.shape != (3,):
+                raise ValueError()
+            points.append(point)
+        except:
+            parser.error("Argument to --target must be a comma-separated list of triplets, each surrounded by parentheses with comma-separated numbers: \"(1,2,3)\" or  \"(1,2,3),(4,5,6)\"")
+    if len(points) < 1:
+        parser.error("No valid points supplied to --target")
+
+    return points
+
+def create_frame_by_frame_trajectory(keypoints: List[np.ndarray]) -> List[np.ndarray]:
+    duration_seconds = 2
+    duration_frames = 60 * duration_seconds
+    steps_between_points = round(duration_frames / len(keypoints))
+    points: List[np.ndarray] = []
+    for i in range(len(keypoints)):
+        start_point = keypoints[i]
+        end_point = keypoints[(i + 1) % len(keypoints)]
+        delta = (end_point - start_point) / steps_between_points
+        for j in range(steps_between_points):
+            points.append(start_point + j * delta)
+    return points
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser("ik_visualizer")
+    parser.add_argument("--target", action="store", type=str, default="(0.1,0.2,0.5)", help="One or more end effector target positions in the form of comma-separated triplets: (0.1,0.2,0.5),(0,0,.75). If multiple specified, robot will follow the path.")
+    options = parser.parse_args()
+
+    # Get end effector target keypoints and if there is more than one, create a smooth frame-by-
+    # frame trajectory
+    ik_target_positions = parse_point_list(text=options.target, parser=parser)
+    if len(ik_target_positions) > 1:
+        ik_target_positions = create_frame_by_frame_trajectory(keypoints=ik_target_positions)
+
     main()
