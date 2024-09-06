@@ -1,6 +1,7 @@
 anytree==2.12.1
 contourpy==1.2.1
 cycler==0.12.1
+dynamixel-sdk==3.7.31
 fonttools==4.53.1
 graphviz==0.20.3
 ikpy==3.4.2
@@ -14,6 +15,7 @@ pillow==10.4.0
 pygame==2.6.0
 PyOpenGL==3.1.7
 pyparsing==3.1.2
+pyserial==3.5
 python-dateutil==2.9.0.post0
 pytz==2024.1
 scipy==1.14.1

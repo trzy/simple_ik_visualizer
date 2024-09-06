@@ -1,5 +1,5 @@
 #
-# ikpy_crane.py
+# testing/ikpy_crane.py
 # Bart Trzynadlowski, 2024
 #
 # Example of using IKPY for inverse kinematics with the CRANE-X7.

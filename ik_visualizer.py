@@ -17,6 +17,10 @@
 # Right click and drag to orbit. Middle click and drag to translate. Use the scroll wheel to zoom in
 # and out.
 #
+# To control a CRANE-X7 in real-time, supply its serial port:
+#
+#   python ik_visualizer.py --port=COM5
+#
 # TODO:
 # -----
 # - Auto-detect robot size and select an appropriate view point.
@@ -25,7 +29,7 @@
 
 import argparse
 import timeit
-from typing import Tuple, List
+from typing import Dict, List, Tuple
 
 from ikpy.chain import Chain
 import numpy as np
@@ -36,6 +40,8 @@ from OpenGL.GLU import *
 
 from rendering import *
 from math_helpers import euler_rotation_matrix4
+from robot import CraneX7Joint, CraneX7Robot
+from robot.util import serial_ports, find_serial_port
 
 
 ####################################################################################################
@@ -245,7 +251,24 @@ def handle_mouse_motion(event: pygame.event.Event):
                 camera_up = inverse_camera_rotation_matrix[0:3,1]
                 ik_target_positions[0] += 0.001 * dx * camera_right - 0.001 * dy * camera_up
 
-def main():
+def joints_and_degrees_from_solution_array(joint_degrees: List[float]) -> Dict[CraneX7Joint, float]:
+    """
+    Converts array of degree values obtained from IK for each joint into the map of joint enum ->
+    degrees expected by CraneX7Robot.
+    """
+    assert len(joint_degrees) == 7
+    joint_ordering = [  # arranged in same order as in joint_degrees solution array
+        CraneX7Joint.SHOULDER_PAN,
+        CraneX7Joint.SHOULDER_TILT,
+        CraneX7Joint.UPPER_TWIST,
+        CraneX7Joint.UPPER_ROTATE,
+        CraneX7Joint.LOWER_FIXED,
+        CraneX7Joint.LOWER_REVOLUTE,
+        CraneX7Joint.WRIST
+    ]
+    return { joint_ordering[i]: joint_degrees[i] for i in range(len(joint_ordering)) }
+
+def main(robot: CraneX7Robot | None):
     # Load Crane X7 (must be consistent with hard-coded definition)
     #TODO: construct scene graph directly from URDF file
     joint_mask = [ True ] * 9
@@ -253,6 +276,11 @@ def main():
     joint_mask[-1] = False  # last not a real joint
     kinematic_chain = Chain.from_urdf_file(urdf_file="crane_x7_simple.urdf", active_links_mask=joint_mask)
     joint_angles = [ 0 ] * 9
+
+    # Init robot
+    if robot:
+        robot.speed(rev_per_min=4.0)
+        robot.torque(enabled=True)
 
     # Init graphics
     init_graphics(resolution=(800,600))
@@ -289,6 +317,10 @@ def main():
         camera()
         draw_scene(scene_graph=scene_graph)
 
+        # Send to robot
+        if robot:
+            robot.goal(joint_degrees=joints_and_degrees_from_solution_array(joint_degrees))
+
         # Display and wait until next frame
         pygame.display.flip()
         frame_end = timeit.default_timer()
@@ -297,12 +329,17 @@ def main():
         if frame_time_remaining > 0:
             pygame.time.wait(int(frame_time_remaining * 1000))
 
-    # Print current joint angles and exit
-    print("Joint Angles")
-    print("------------")
+    # Print current IK joint angles and exit
+    print("IK Joint Angles")
+    print("---------------")
     for i in range(len(joint_degrees)):
         print(f"  {i} = {joint_degrees[i]:.2f} deg")
     pygame.quit()
+
+
+####################################################################################################
+# Program Entry Point and Command Line Processing
+####################################################################################################
 
 def parse_point_list(text: str, parser: argparse.ArgumentParser) -> List[np.ndarray]:
     points: List[np.ndarray] = []
@@ -351,9 +388,28 @@ def create_frame_by_frame_trajectory(keypoints: List[np.ndarray]) -> List[np.nda
             points.append(start_point + j * delta)
     return points
 
+def get_serial_port() -> str | None:
+    ports = serial_ports()
+    if options.list_ports:
+        if len(ports) == 0:
+            print("No serial ports.")
+        else:
+            print("\n".join(ports))
+        exit()
+    if options.port is None:
+        return None
+    port = ports[0] if options.port is None else find_serial_port(port_pattern=options.port)
+    if port is None:
+        print("Error: No serial ports.")
+        exit()
+    print(f"Serial port: {port}")
+    return port
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("ik_visualizer")
     parser.add_argument("--target", action="store", type=str, default="(0.1,0.2,0.5)", help="One or more end effector target positions in the form of comma-separated triplets: (0.1,0.2,0.5),(0,0,.75). If multiple specified, robot will follow the path.")
+    parser.add_argument("--list-ports", action="store_true", help="List available serial ports and exit")
+    parser.add_argument("--port", metavar="name", action="store", type=str, help="Serial port to use to connect to CRANE-X7")
     options = parser.parse_args()
 
     # Get end effector target keypoints and if there is more than one, create a smooth frame-by-
@@ -362,4 +418,16 @@ if __name__ == "__main__":
     if len(ik_target_positions) > 1:
         ik_target_positions = create_frame_by_frame_trajectory(keypoints=ik_target_positions)
 
-    main()
+    # If a serial port was provided, we will connect to and operate the CRANE-X7
+    serial_port = get_serial_port()
+    robot = CraneX7Robot(serial_port=serial_port) if serial_port is not None else None
+
+    try:
+        main(robot=robot)
+    finally:
+        if robot is not None:
+            # Slowly return to home so we don't come crashing down
+            robot.speed(rev_per_min=2.0)
+            robot.home_pose()
+            robot.torque(enabled=False)
+

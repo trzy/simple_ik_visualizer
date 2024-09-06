@@ -1,5 +1,5 @@
 #
-# primitives.py
+# rendering/primitives.py
 # Bart Trzynadlowski, 2024
 #
 # Primitive shapes.

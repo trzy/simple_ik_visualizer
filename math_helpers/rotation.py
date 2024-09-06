@@ -1,5 +1,5 @@
 #
-# rotation.py
+# math_helpers/rotation.py
 # Bart Trzynadlowski, 2024
 #
 # Rotation matrices.

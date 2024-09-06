@@ -1,5 +1,5 @@
 #
-# scene_graph.py
+# rendering/scene_graph.py
 # Bart Trzynadlowski, 2024
 #
 # Scene graph classes for rendering. The scene graph is an n-way tree.
