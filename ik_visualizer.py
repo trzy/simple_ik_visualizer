@@ -279,7 +279,7 @@ def main(robot: CraneX7Robot | None):
 
     # Init robot
     if robot:
-        robot.speed(rev_per_min=4.0)
+        robot.speed(rev_per_min=6.0)
         robot.torque(enabled=True)
 
     # Init graphics
