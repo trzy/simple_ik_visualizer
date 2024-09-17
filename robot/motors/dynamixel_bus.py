@@ -6,12 +6,13 @@
 # same serial port.
 #
 
+from copy import copy
 from typing import Dict, List, Type
 
 from dynamixel_sdk import *
 from dynamixel_sdk.port_handler import *
 
-from .control_table import ControlAttribute
+from .control_table import ControlAttribute, GoalPosition
 from .dynamixel_motor import DynamixelMotor
 
 
@@ -66,6 +67,8 @@ class DynamixelBus:
 
         motor = self._get_motor(motor)
 
+        value = self._apply_limits(motor=motor, value=value)
+
         if value.num_bytes == 1:
             result, error = self._packet_handler.write1ByteTxRx(self._port_handler, motor.id, value.address, value.value)
         elif value.num_bytes == 2:
@@ -91,6 +94,10 @@ class DynamixelBus:
             return succeeded
 
     def _write_all_one_value(self, value: ControlAttribute) -> bool:
+        if isinstance(value, GoalPosition):
+            # Cannot group write position because we need to limit angles on a per-motor basis
+            raise ValueError("GoalPosition cannot be written to multiple motors because motor angle limits may differ")
+
         if not value.write:
             raise ValueError(f"{value.__class__.__name__} is not writeable")
         if value.num_bytes not in [ 1, 2, 4 ]:
@@ -132,6 +139,14 @@ class DynamixelBus:
         else:
             assert isinstance(motor, DynamixelMotor)
             return motor
+
+    @staticmethod
+    def _apply_limits(motor: DynamixelMotor, value: ControlAttribute) -> ControlAttribute:
+        if isinstance(value, GoalPosition):
+            new_value = copy(value)
+            new_value.apply_limits(lower_limit_motor_step=motor.lower_limit_motor_step, upper_limit_motor_step=motor.upper_limit_motor_step)
+            return new_value
+        return value
 
     @staticmethod
     def _comm_result_to_string(result: int) -> str:

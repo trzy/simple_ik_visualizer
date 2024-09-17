@@ -126,6 +126,9 @@ class GoalPosition(ControlAttribute):
         else:
             self._value = max(0, min(4096, value))
 
+    def apply_limits(self, lower_limit_motor_step: int, upper_limit_motor_step: int):
+        self._value = max(lower_limit_motor_step, min(upper_limit_motor_step, self._value))
+
     @property
     def value(self) -> int:
         return self._value

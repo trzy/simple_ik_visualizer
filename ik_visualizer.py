@@ -319,7 +319,7 @@ def main(robot: CraneX7Robot | None):
 
         # Send to robot
         if robot:
-            robot.goal(joint_degrees=joints_and_degrees_from_solution_array(joint_degrees))
+            robot.goals(joint_degrees=joints_and_degrees_from_solution_array(joint_degrees))
 
         # Display and wait until next frame
         pygame.display.flip()
@@ -420,7 +420,7 @@ if __name__ == "__main__":
 
     # If a serial port was provided, we will connect to and operate the CRANE-X7
     serial_port = get_serial_port()
-    robot = CraneX7Robot(serial_port=serial_port) if serial_port is not None else None
+    robot = CraneX7Robot(serial_port=serial_port, urdf_filepath="crane_x7_simple.urdf") if serial_port is not None else None
 
     try:
         main(robot=robot)
