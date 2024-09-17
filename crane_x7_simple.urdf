@@ -42,7 +42,8 @@
   <joint name="crane_x7_lower_arm_fixed_part_joint" type="revolute">
       <origin xyz="0.0 0.0 0.121" rpy="0.0 -0.0 0.0" />
       <axis xyz="0.0 0.0 1.0" />
-      <limit lower="-2.77343" upper="2.77343" velocity="4.81710873" effort="4.0" />
+      <limit lower="-0.7417649320975901" upper="0.7417649320975901" velocity="4.81710873" effort="4.0" />   <!-- angle limits to prevent wire snagging: [-85 degrees, +85 degrees] -->
+      <!--<limit lower="-2.77343" upper="2.77343" velocity="4.81710873" effort="4.0" />-->
       <parent link="link_4" />
       <child link="link_5" />
   </joint>
