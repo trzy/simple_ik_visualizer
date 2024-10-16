@@ -79,13 +79,14 @@ class CraneX7Robot:
 
     def home_pose(self, timeout_seconds: float | None = 60):
         home_motor_step_by_joint = {
-            CraneX7Joint.SHOULDER_PAN: 2114,
-            CraneX7Joint.SHOULDER_TILT: 2371,
-            CraneX7Joint.UPPER_TWIST: 2026,
+            CraneX7Joint.SHOULDER_PAN: 1032,
+            CraneX7Joint.SHOULDER_TILT: 2357,
+            CraneX7Joint.UPPER_TWIST: 2048,
             CraneX7Joint.UPPER_ROTATE: 220,
-            CraneX7Joint.LOWER_FIXED: 1991,
-            CraneX7Joint.LOWER_REVOLUTE: 2042,
-            CraneX7Joint.WRIST: 2087
+            CraneX7Joint.LOWER_FIXED: 2048,
+            CraneX7Joint.LOWER_REVOLUTE: 2145,
+            CraneX7Joint.WRIST: 2008,
+            CraneX7Joint.GRIPPER: 2318
         }
 
         # Command robot to return to home pose

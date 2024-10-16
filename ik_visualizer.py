@@ -222,6 +222,7 @@ def crane_x7(joint_angles: np.ndarray, ik_target_position: np.ndarray) -> SceneG
 ####################################################################################################
 
 ik_target_positions: List[np.ndarray] = []
+joint_target_degrees: List[List[float]] = []
 
 def handle_mouse_button(event: pygame.event.Event):
     global mouse_x, mouse_y
@@ -277,6 +278,12 @@ def main(robot: CraneX7Robot | None):
     kinematic_chain = Chain.from_urdf_file(urdf_file="crane_x7_simple.urdf", active_links_mask=joint_mask)
     joint_angles = [ 0 ] * 9
 
+    # Precompute joint positions for each step of trajectory using IK
+    for target_position in ik_target_positions:
+        joint_angles = kinematic_chain.inverse_kinematics(target_position=target_position, initial_position=joint_angles)#, target_orientation=[1,0,0], orientation_mode="X")
+        joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
+        joint_target_degrees.append(joint_degrees)
+
     # Init robot
     if robot:
         robot.speed(rev_per_min=6.0)
@@ -288,7 +295,7 @@ def main(robot: CraneX7Robot | None):
     # Render loop
     target_frame_rate = 60
     target_frame_time = 1.0 / target_frame_rate
-    current_ik_target_position_idx = 0
+    current_target_position_idx = 0
     lights()
     quit = False
     while not quit:
@@ -302,13 +309,9 @@ def main(robot: CraneX7Robot | None):
             handle_mouse_wheel(event=event)
             handle_mouse_motion(event=event)
 
-        # Get next point in trajectory
-        target_position = ik_target_positions[current_ik_target_position_idx]
-        current_ik_target_position_idx = (current_ik_target_position_idx + 1) % len(ik_target_positions)
-
-        # Perform IK
-        joint_angles = kinematic_chain.inverse_kinematics(target_position=target_position, initial_position=joint_angles) #, target_orientation=[1,0,0], orientation_mode="X")
-        joint_degrees = [ np.rad2deg(rads) for rads in joint_angles ][1:-1] # get the 7 middle joints
+        # Get joint angles for next point in trajectory
+        joint_degrees = joint_target_degrees[current_target_position_idx]
+        current_target_position_idx = (current_target_position_idx + 1) % len(joint_target_degrees)
 
         # Produce scene graph by running forward kinematics
         scene_graph = crane_x7(joint_angles=joint_degrees, ik_target_position=target_position)
